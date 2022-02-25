@@ -13,7 +13,7 @@ public static class Moogle
     static Vector[] tfidf_matrix = new Vector[docs.Length + 1];
 
 
-    public static void Start()
+    public static void Start() //Método para Leer documentos y hacer matriz de TF-IDF al inicio del programa.
     {
         docs = ReadFiles();
         Words = WordsCollection();
@@ -31,6 +31,7 @@ public static class Moogle
 
     static Document[] ReadFiles() //Leer y guardar el contenido de cada uno de los archivos de texto.
     {
+        Console.WriteLine("Leyendo Documentos...");
         string[] files = ReadFolder();
 
         Document[] docs = new Document[files.Length];
@@ -62,7 +63,7 @@ public static class Moogle
 
         Create_QueryVector(query2);
 
-        return new SearchResult(Items(ReadFiles()), query2);
+        return new SearchResult(Items(docs), query2);
     }
 
     public static SearchItem[] Items(Document[] docs) //Crear los elementos resultados
@@ -94,7 +95,7 @@ public static class Moogle
                 if (words_positions[i] != -1)
                 {
                     scores[count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
-                    old_items[count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[count], Create_Snippet(words_positions[i], docs[i].Content), scores[count]);
+                    old_items[count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[count]);
                     count--;
                 }
             }
@@ -115,7 +116,7 @@ public static class Moogle
 
                 }
             }
-            
+
             return items;
         }
     }
@@ -147,12 +148,13 @@ public static class Moogle
 
     static List<string> WordsCollection() //Conjunto de todas las palabras del corpus
     {
-        Document[] docs = ReadFiles();
+        Console.WriteLine("Creando WordsCollection...");
+        Document[] documents = docs;
         List<string> WordsCollection = new List<string>();
 
-        for (int i = 0; i < docs.Length; i++)
+        for (int i = 0; i < documents.Length; i++)
         {
-            string[] doc_words = docs[i].Processed;
+            string[] doc_words = documents[i].Processed;
 
             for (int j = 0; j < doc_words.Length; j++)
             {
@@ -160,7 +162,6 @@ public static class Moogle
                     WordsCollection.Add(doc_words[j].ToLower());
             }
         }
-
         return WordsCollection;
     }
 
@@ -251,7 +252,6 @@ public static class Moogle
         {
             for (int j = 0; j < sub_query.Length; j++) //Iterando por cada palabra del query
             {
-                //if (IsOperator(sub_query[j][1]))
                 word_position[i] = docs[i].Content.IndexOf(sub_query[j], System.StringComparison.CurrentCultureIgnoreCase);
 
                 if (word_position[i] != -1) { count_matches++; break; }
@@ -261,38 +261,6 @@ public static class Moogle
         return word_position;
     }
 
-    #region Operators
-    // static bool IsOperator(char m) //Comprobamos si un caracter es un operador: ! ~ ^ *
-    // {
-    //     if (m == '!' || m == '*' || m == '^' || m == '~')
-    //         return true;
-    //     return false;
-    // }
-
-    // static void Detect_Operator(string[] words)
-    // {
-    //     for (int i = 0; i < words.Length; i++)
-    //     {
-    //         switch (words[i][1])
-    //         {
-    //             case !:
-
-    //             case *:
-
-    //             case ^:
-
-    //             case ~:
-
-    //         }
-    //     }
-    // }
-
-    // static void Ignore_Operator()
-    // {
-
-    // }
-
-    #endregion
     static string Create_Snippet(int position, string Text)
     {
         return Text.Substring(Math.Max(0, position - 50), Math.Min(150, Text.Length - position));
@@ -308,11 +276,8 @@ public static class Moogle
 
         for (int i = 0; i < words.Length; i++)
         {
-            // if (words[i].ToLower() == term.ToLower()) ted++;
             if (words[i].Equals(term, System.StringComparison.CurrentCultureIgnoreCase)) ted++;
         }
-
-        //Console.WriteLine("Funciona Repeat");
 
         return ted;
     }
@@ -325,8 +290,6 @@ public static class Moogle
         int TED = words.Length; //Cantidad de palabras totales en el documento.
 
         float TF = (float)ted / (float)TED;
-
-        //Console.WriteLine("Funciona TF");
 
         return TF;
     }
@@ -347,18 +310,13 @@ public static class Moogle
 
         float IDF = (float)Math.Log((float)D / (float)deD);
 
-        //if (deD == 0)
-        Console.WriteLine("Funciona IDF: " + term + "--" + deD);
-
         return IDF;
 
     }
 
     public static float TF_IDF(string term, Document doc)
     {
-        float a = TF(term, doc) * IDF(term);
-        Console.WriteLine("Funciona TF-IDF:" + term + "--" + a);
-        return a;
+        return TF(term, doc) * IDF(term);;
     }
 
     #endregion
@@ -367,8 +325,6 @@ public static class Moogle
 
     static float Calc_Score(Vector v_query, Vector v_doc)
     {
-        Console.WriteLine("Funciona Calc_Score");
-
         return (float)Vector.GetSimilarity(v_query, v_doc);
     }
 
@@ -378,7 +334,7 @@ public static class Moogle
 
         for (int i = 0; i < Words.Count; i++)
         {
-            if (doc.Content.Contains(Words[i]))
+            if (doc.Content.Contains(Words[i], System.StringComparison.OrdinalIgnoreCase))
             {
                 vector[i] = TF_IDF(Words[i], doc);
             }
@@ -389,15 +345,13 @@ public static class Moogle
 
     public static Vector[] Create_TermDocumentMatrix() //Crear matriz de 
     {
-
+        Console.WriteLine("Creando Matriz de TF-IDF...");
         Vector[] vectors = new Vector[docs.Length + 1];
 
         for (int i = 0; i < docs.Length; i++)
         {
             vectors[i] = Vectorize(docs[i]);
         }
-
-        Console.WriteLine("Funciona Matrix");
         return vectors;
     }
 
