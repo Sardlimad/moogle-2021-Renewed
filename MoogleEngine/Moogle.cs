@@ -83,18 +83,39 @@ public static class Moogle
         }
         else
         {
-            SearchItem[] items = new SearchItem[count_matches];
+            SearchItem[] old_items = new SearchItem[count_matches];
 
             int count = count_matches - 1;
+
+            float[] scores = new float[count_matches];
+
             for (int i = 0; i < words_positions.Length; i++)
             {
                 if (words_positions[i] != -1)
                 {
-                    items[count] = new SearchItem(Path.GetFileName(docs[i].Path) + Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]), Create_Snippet(words_positions[i], docs[i].Content), 0.0f);
+                    scores[count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
+                    old_items[count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[count], Create_Snippet(words_positions[i], docs[i].Content), scores[count]);
                     count--;
                 }
             }
 
+            SearchItem[] items = new SearchItem[count_matches];
+
+            Array.Sort(scores); //Ordeno el array de scores
+
+            for (int i = 0; i < scores.Length; i++)
+            {
+                for (int j = 0; j < old_items.Length; j++)
+                {
+                    if (scores[i] == old_items[j].Score)
+                    {
+                        items[i] = old_items[j];
+                        break;
+                    }
+
+                }
+            }
+            
             return items;
         }
     }
@@ -369,7 +390,7 @@ public static class Moogle
     public static Vector[] Create_TermDocumentMatrix() //Crear matriz de 
     {
 
-        Vector[] vectors = new Vector[docs.Length+1];
+        Vector[] vectors = new Vector[docs.Length + 1];
 
         for (int i = 0; i < docs.Length; i++)
         {
