@@ -96,7 +96,7 @@ public static class Moogle
                 {
                     scores[temp_count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
 
-                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
+                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
 
                     temp_count--;
                 }
