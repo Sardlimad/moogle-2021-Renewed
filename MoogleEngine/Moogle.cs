@@ -84,9 +84,9 @@ public static class Moogle
         }
         else
         {
-            SearchItem[] old_items = new SearchItem[count_matches];
+            SearchItem[] temp_items = new SearchItem[count_matches];
 
-            int count = count_matches - 1;
+            int temp_count = count_matches - 1;
 
             float[] scores = new float[count_matches];
 
@@ -94,23 +94,26 @@ public static class Moogle
             {
                 if (words_positions[i] != -1)
                 {
-                    scores[count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
-                    old_items[count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[count]);
-                    count--;
+                    scores[temp_count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
+
+                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
+
+                    temp_count--;
                 }
             }
 
             SearchItem[] items = new SearchItem[count_matches];
 
             Array.Sort(scores); //Ordeno el array de scores
-
+            Array.Reverse(scores); //Invertir el orden para que estén los mayores valores primero
+            
             for (int i = 0; i < scores.Length; i++)
             {
-                for (int j = 0; j < old_items.Length; j++)
+                for (int j = 0; j < temp_items.Length; j++)
                 {
-                    if (scores[i] == old_items[j].Score)
+                    if (scores[i] == temp_items[j].Score)
                     {
-                        items[i] = old_items[j];
+                        items[i] = temp_items[j];
                         break;
                     }
 
@@ -158,8 +161,8 @@ public static class Moogle
 
             for (int j = 0; j < doc_words.Length; j++)
             {
-                if (!WordsCollection.Contains(doc_words[j].ToLower()))
-                    WordsCollection.Add(doc_words[j].ToLower());
+                if (!WordsCollection.Contains(doc_words[j]))
+                    WordsCollection.Add(doc_words[j]);
             }
         }
         return WordsCollection;
@@ -276,9 +279,8 @@ public static class Moogle
 
         for (int i = 0; i < words.Length; i++)
         {
-            if (words[i].Equals(term, System.StringComparison.CurrentCultureIgnoreCase)) ted++;
+            if (words[i].Equals(term)) ted++;
         }
-
         return ted;
     }
 
@@ -290,7 +292,7 @@ public static class Moogle
         int TED = words.Length; //Cantidad de palabras totales en el documento.
 
         float TF = (float)ted / (float)TED;
-
+        
         return TF;
     }
 
@@ -308,7 +310,7 @@ public static class Moogle
             deD += Repeat(term, docs[i]);
         }
 
-        float IDF = (float)Math.Log((float)D / (float)deD);
+        float IDF = (float)Math.Log(1+((float)D / (float)deD)); //Variante IDF Smooth
 
         return IDF;
 
@@ -334,7 +336,7 @@ public static class Moogle
 
         for (int i = 0; i < Words.Count; i++)
         {
-            if (doc.Content.Contains(Words[i], System.StringComparison.OrdinalIgnoreCase))
+            if (doc.Marks.Contains(Words[i]))
             {
                 vector[i] = TF_IDF(Words[i], doc);
             }
