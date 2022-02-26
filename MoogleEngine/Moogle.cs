@@ -266,7 +266,11 @@ public static class Moogle
 
     static string Create_Snippet(int position, string Text)
     {
-        return Text.Substring(Math.Max(0, position - 50), Math.Min(150, Text.Length - position));
+        if(Text.Length < 150)
+        {
+            return Text.Substring(0);
+        }
+        return Text.Substring(Math.Max(0, position - 50), Math.Min(200, Text.Length - position));
     }
 
     #region TF-IDF 
