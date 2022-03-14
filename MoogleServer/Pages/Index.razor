@@ -1,4 +1,5 @@
 ﻿@page "/"
+<link rel="StyleSheet" href="Index.Razor.css" type="text/css" media="screen" />
 
 <PageTitle>Moogle!</PageTitle>
 
@@ -18,7 +19,7 @@
 @foreach (var item in result.Items()) {
     <li>
         <div class="item">
-            <p class="title">@item.Title</p>
+            <h5 class="title">@item.Title</h5>
             <p>... @item.Snippet ...</p>
         </div>
     </li>
