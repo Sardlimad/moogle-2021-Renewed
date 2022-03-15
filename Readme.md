@@ -76,6 +76,7 @@ El usuario si desea puede hacer uso de ciertos operadores para una búsqueda má
 - Ignorar(`!`): Siempre que aparezca ese símbolo delante de una palabra, se eliminará de los resultados todo documento que contenga dicha palabra.
 - Necesario(`^`): Siempre que aparezca ese símbolo delante de una palabra, se comprobará que dicha palabra aparezca en el documento, de lo contratio no será agregado a los resultados.
 - Prioridad(`*`): Cualquier cantidad de "asterisco" delante de una palabra le otorga a esta una mayor importancia, por lo que los documentos que la contengan tendrán mayor *Score*.
+- Cercanía(`~`) : Cuando aparece este símbolo entre dos palabras, se requiere que estas palabras estén cerca en el documento, por lo que los documentos que más cerca tengan estas palabras tendrán un mayor *Score*.
 
 ### Evaluación del `score`
 
