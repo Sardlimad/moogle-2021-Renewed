@@ -8,16 +8,23 @@ public static class Moogle
     private static string query2 = "";
 
     static Document[] docs = new Document[ReadFolder().Length];
-    static List<string> Words = new List<string>();
+    public static List<string> Words = new List<string>();
+
+    static List<int>[,] Positions = new List<int>[Words.Count,docs.Length];
 
     static Vector[] tfidf_matrix = new Vector[docs.Length + 1];
+
+    public static Vector[] tfidf_matrix_aux = new Vector[docs.Length + 1]; //Matriz Auxiliar para modificar durante la búsqueda
 
 
     public static void Start() //Método para Leer documentos y hacer matriz de TF-IDF al inicio del programa.
     {
         docs = ReadFiles();
         Words = WordsCollection();
+        Positions = Words_Positions();
         tfidf_matrix = Create_TermDocumentMatrix();
+
+        tfidf_matrix_aux = tfidf_matrix; //Igualamos la matrix auxiliar a la matriz de TF-IDF
     }
 
     #endregion
@@ -59,7 +66,15 @@ public static class Moogle
     {
         count_matches = 0; // Llevar a cero todas las coincidencias antes de empezar una nueva búsqueda
 
-        query2 = Suggest(query).TrimEnd();
+        Operators.Restart();
+
+        tfidf_matrix_aux = tfidf_matrix; //Reiniciar los valores de TF-IDF originales (sin aletración por operador *)
+
+        Operators.CheckPriority();
+
+        Operators.RunOperators(query); //Detectar Operadores.
+
+        query2 = Suggest(query).Trim();
 
         Create_QueryVector(query2);
 
@@ -94,7 +109,7 @@ public static class Moogle
             {
                 if (words_positions[i] != -1)
                 {
-                    scores[temp_count] = Calc_Score(tfidf_matrix[docs.Length], tfidf_matrix[i]);
+                    scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i]);
 
                     temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
 
@@ -106,7 +121,7 @@ public static class Moogle
 
             Array.Sort(scores); //Ordeno el array de scores
             Array.Reverse(scores); //Invertir el orden para que estén los mayores valores primero
-            
+
             for (int i = 0; i < scores.Length; i++)
             {
                 for (int j = 0; j < temp_items.Length; j++)
@@ -133,7 +148,7 @@ public static class Moogle
 
         for (int j = 0; j < text.Length; j++)
         {
-            if (!Char.IsLetter(text[j]))
+            if (!Char.IsLetterOrDigit(text[j]))
                 new_text += ' ';            //Si el caracter no es una letra entonces lo reemplazamos por espacio y es lo que agregamos a la nueva cadena de texto.
             else
                 new_text += text[j];         //si el caracter es una letra pues la agregamos a la nueva cadena de texo.
@@ -166,6 +181,40 @@ public static class Moogle
             }
         }
         return WordsCollection;
+    }
+
+    static List<int>[,] Words_Positions()
+    {
+        Console.WriteLine("Creando Matriz de Posiciones...");
+        Document[] documents = docs;
+        List<int>[,] Positions = new List<int>[Words.Count,documents.Length]; //Crear una matriz de List<int> que contienen las posiciones de una palabra en un documento
+
+        for (int i = 0; i < documents.Length; i++)
+        {
+            for (int j = 0; j < Words.Count; j++)
+            {
+                Positions[i,j] = GetPositions(documents[i].Content,Words[j]);
+            }
+        }
+        return Positions;
+    }
+
+    static List<int> GetPositions(string doc,string word)
+    {
+        List<int> Pos = new List<int>();
+        int inicial_pos = 0;
+
+        while(true)
+        {
+            int last_pos = doc.IndexOf(word,inicial_pos);
+            
+            if(last_pos == -1) break;
+
+            Pos.Add(last_pos);
+
+            inicial_pos = last_pos + word.Length;
+        }
+        return Pos;
     }
 
     #region Suggestion Group
@@ -201,7 +250,7 @@ public static class Moogle
         return matrix[m, n];
     }
 
-    static bool DoSuggestion(string inicial_w, string final_w)
+    static bool DoSuggestion(string inicial_w, string final_w) //Esto es una poda. Si la diferencia de la longitud de ambas cadenas en valor absoluto excede a 3 entonces se devuelve false y no se hará la sugerencia.
     {
         if (Math.Abs(final_w.Length - inicial_w.Length) <= 3)
             return true;
@@ -218,23 +267,25 @@ public static class Moogle
 
             string word_suggested = sub_query[i]; //Palabra más parecida a la palabra introducida por el usuario, inicialmente es la misma palabra.
             int lower_cost = int.MaxValue;
-
-            foreach (var word in Words)
+            if (sub_query[i] == "" || !Operators.IsOperator(sub_query[i][0]))
             {
-                int cost = int.MaxValue;
-
-                if (DoSuggestion(sub_query[i], word))
+                foreach (var word in Words)
                 {
-                    cost = Calc_LevenshteinDistance(sub_query[i].ToLower(), word);
+                    int cost = int.MaxValue;
 
-                    if (cost < 4 && cost < lower_cost)
+                    if (DoSuggestion(sub_query[i], word)) //Se comprueba si es razonable hacer el cálculo de la Distancia de Levenshtein
                     {
-                        lower_cost = cost;
-                        word_suggested = word;
-                    }
-                }
+                        cost = Calc_LevenshteinDistance(sub_query[i].ToLower(), word);
 
-                if (cost == 0) break; //Si encuentro una palabra idéntica, o sea con coste 0, entonces no seguir iterando.
+                        if (cost < 4 && cost < lower_cost)
+                        {
+                            lower_cost = cost;
+                            word_suggested = word;
+                        }
+                    }
+
+                    if (cost == 0) break; //Si encuentro una palabra idéntica, o sea con coste 0, entonces no seguir iterando.
+                }
             }
 
             suggestion += word_suggested + " ";
@@ -253,8 +304,16 @@ public static class Moogle
 
         for (int i = 0; i < docs.Length; i++) //Iterando por cada documento
         {
+            //Verficamos que el documento no contenga alguna palabra a IGNORAR, y verificamos que tenga todas las palabras REQUERIDAS
+            if (!Operators.CheckIgnore(docs[i].Content) || !Operators.CheckRequired(docs[i].Content))
+            {
+                word_position[i] = -1;
+                continue;
+            }
+
             for (int j = 0; j < sub_query.Length; j++) //Iterando por cada palabra del query
             {
+
                 word_position[i] = docs[i].Content.IndexOf(sub_query[j], System.StringComparison.CurrentCultureIgnoreCase);
 
                 if (word_position[i] != -1) { count_matches++; break; }
@@ -266,11 +325,11 @@ public static class Moogle
 
     static string Create_Snippet(int position, string Text)
     {
-        if(Text.Length < 150)
+        if (Text.Length < 150)
         {
             return Text.Substring(0);
         }
-        return Text.Substring(Math.Max(0, position - 50), Math.Min(200, Text.Length - position));
+        return Text.Substring(Math.Max(0, position - 50), Math.Min(150, Text.Length - position));
     }
 
     #region TF-IDF 
@@ -296,7 +355,7 @@ public static class Moogle
         int TED = words.Length; //Cantidad de palabras totales en el documento.
 
         float TF = (float)ted / (float)TED;
-        
+
         return TF;
     }
 
@@ -314,7 +373,7 @@ public static class Moogle
             deD += Repeat(term, docs[i]);
         }
 
-        float IDF = (float)Math.Log(1+((float)D / (float)deD)); //Variante IDF Smooth
+        float IDF = (float)Math.Log(1 + ((float)D / (float)deD)); //Variante IDF Smooth
 
         return IDF;
 
@@ -322,7 +381,7 @@ public static class Moogle
 
     public static float TF_IDF(string term, Document doc)
     {
-        return TF(term, doc) * IDF(term);;
+        return TF(term, doc) * IDF(term); ;
     }
 
     #endregion
@@ -334,13 +393,13 @@ public static class Moogle
         return (float)Vector.GetSimilarity(v_query, v_doc);
     }
 
-    private static Vector Vectorize(Document doc) //Crear Vector del documento de dimesión = cantidad de palabras en el corpus.
+    private static Vector Vectorize(Document doc) //Crear Vector del documento 
     {
-        double[] vector = new double[Words.Count];
+        double[] vector = new double[Words.Count]; //Dimesiones del Vector = cantidad de palabras en el corpus.
 
         for (int i = 0; i < Words.Count; i++)
         {
-            if (doc.Marks.Contains(Words[i]))
+            if (doc.Marks.Contains(Words[i])) //Si la palabra existe en el documento entonces le calculamos el TFIDF sino es directamente 0(el valor por defecto)
             {
                 vector[i] = TF_IDF(Words[i], doc);
             }
@@ -349,23 +408,23 @@ public static class Moogle
         return new Vector(vector);
     }
 
-    public static Vector[] Create_TermDocumentMatrix() //Crear matriz de 
+    public static Vector[] Create_TermDocumentMatrix() //Crear matriz de TF-IDF
     {
-        Console.WriteLine("Creando Matriz de TF-IDF...");
-        Vector[] vectors = new Vector[docs.Length + 1];
+        Console.WriteLine("Creando Matriz de TF-IDF..."); //Mensaje de Información para el usuario (visible en consola)
+        Vector[] vectors = new Vector[docs.Length + 1]; //Dimensión del Array de Vectores(También visible como Matrix) = cantidad de documentos +1 ya que el query también se agrega tratándole como un documento más.
 
         for (int i = 0; i < docs.Length; i++)
         {
-            vectors[i] = Vectorize(docs[i]);
+            vectors[i] = Vectorize(docs[i]); //Creamos el Vector de Cada Documento **El del query se queda vacío, será creado más adelante**
         }
         return vectors;
     }
 
-    public static void Create_QueryVector(string query)
+    public static void Create_QueryVector(string query) //Creando el Vector del query
     {
-        Document doc_query = new Document("query", query);
+        Document doc_query = new Document("query", query); //Primeramente lo convertimos al Tipo "Document"
 
-        tfidf_matrix[docs.Length] = Vectorize(doc_query);
+        tfidf_matrix_aux[docs.Length] = Vectorize(doc_query); //A la útima fila de la matriz, correspondiente al query, le asignamos su vector.
     }
 
     #endregion
