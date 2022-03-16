@@ -9,9 +9,9 @@ public class Operators
 
     public static List<string> Words_Required = new List<string>();
 
-    static Dictionary<string, int> Words_Priority = new Dictionary<string, int>();
+    public static Dictionary<string, int> Words_Priority = new Dictionary<string, int>();
 
-    static List<(string t1, string t2)> Words_Nearness = new List<(string, string)>();
+    public static List<(string t1, string t2)> Words_Nearness = new List<(string, string)>();
     //Detectar Operadores
     public static void RunOperators(string query)
     {

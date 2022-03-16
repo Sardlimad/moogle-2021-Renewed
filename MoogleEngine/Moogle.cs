@@ -131,9 +131,9 @@ public static class Moogle
             {
                 if (words_positions[i] != -1)
                 {
-                    scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i])+increases[i];
+                    scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i]) + increases[i];
 
-                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count]+"/"+increases[i], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
+                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
 
                     temp_count--;
                 }
@@ -178,10 +178,28 @@ public static class Moogle
 
         return new_text.ToLower();
     }
+    private static string NoMarks2(string text) //Método para eliminar todos los símbolos. 
+    {
+        string new_text = "";
+
+        for (int j = 0; j < text.Length; j++)
+        {
+            if (!Char.IsLetterOrDigit(text[j]) && !Operators.IsOperator(text[j]))
+                new_text += ' ';            //Si el caracter no es una letra entonces lo reemplazamos por espacio y es lo que agregamos a la nueva cadena de texto.
+            else
+                new_text += text[j];         //si el caracter es una letra pues la agregamos a la nueva cadena de texo.
+        }
+
+        return new_text.ToLower();
+    }
 
     public static string[] ProcessText(string query) //procesador de texto para string
     {
         return NoMarks(query).Split(' ');
+    }
+    public static string[] ProcessText2(string query) //procesador de texto para string
+    {
+        return NoMarks2(query).Split(' ');
     }
 
     #endregion
@@ -198,7 +216,7 @@ public static class Moogle
 
             for (int j = 0; j < doc_words.Length; j++)
             {
-                if (!WordsCollection.Contains(doc_words[j]) && doc_words[j]!="")
+                if (!WordsCollection.Contains(doc_words[j]) && doc_words[j] != "")
                     WordsCollection.Add(doc_words[j]);
             }
         }
@@ -217,7 +235,7 @@ public static class Moogle
 
             for (int j = 0; j < documents.Length; j++)
             {
-                Doc_List.Add(GetPositions(documents[j].Content,Words[i]));
+                Doc_List.Add(GetPositions(documents[j].Content, Words[i]));
             }
             Words_Docs_Pos.Add(Words[i], Doc_List);
         }
@@ -276,13 +294,15 @@ public static class Moogle
 
     static bool DoSuggestion(string inicial_w, string final_w) //Esto es una poda. Si la diferencia de la longitud de ambas cadenas en valor absoluto excede a 3 entonces se devuelve false y no se hará la sugerencia.
     {
+        if(inicial_w.Contains('!') || inicial_w.Contains('^') || inicial_w.Contains('*') || inicial_w.Contains('~')) return false;
+
         if (Math.Abs(final_w.Length - inicial_w.Length) <= 3 && inicial_w != "" && final_w != "") return true;
-        
+
         return false;
     }
     static string Suggest(string query)
     {
-        string[] sub_query = ProcessText(query);
+        string[] sub_query = ProcessText2(query);
 
         string suggestion = "";
 
@@ -291,8 +311,7 @@ public static class Moogle
 
             string word_suggested = sub_query[i]; //Palabra más parecida a la palabra introducida por el usuario, inicialmente es la misma palabra.
             int lower_cost = int.MaxValue;
-            if (sub_query[i] == "" || !Operators.IsOperator(sub_query[i][0]))
-            {
+            
                 foreach (var word in Words)
                 {
                     int cost = int.MaxValue;
@@ -309,13 +328,12 @@ public static class Moogle
                     }
 
                     if (cost == 0) break; //Si encuentro una palabra idéntica, o sea con coste 0, entonces no seguir iterando.
-                }
             }
 
             suggestion += word_suggested + " ";
         }
 
-        return suggestion;
+        return NoMarks(suggestion);
     }
 
     #endregion
@@ -337,12 +355,12 @@ public static class Moogle
 
             for (int j = 0; j < sub_query.Length; j++) //Iterando por cada palabra del query
             {
-             if (sub_query[j] !="")
-             {
+                if (sub_query[j] != "")
+                {
                     word_position[i] = docs[i].Content.IndexOf(sub_query[j], System.StringComparison.CurrentCultureIgnoreCase);
-    
+
                     if (word_position[i] != -1) { count_matches++; break; }
-             }
+                }
             }
         }
 
