@@ -17,20 +17,26 @@ public class Vector
     {
         get { return this.elements.Length; }
     }
+    public double[] Elements
+    {
+        get { return this.elements; }
+
+        set { this.elements = value; }
+    }
 
     //Indexer
     public double this[int i]
     {
         get
         {
-            if(i<0 || i>= this.Size)
+            if (i < 0 || i >= this.Size)
                 throw new IndexOutOfRangeException();
             return this.elements[i];
 
         }
         set
         {
-            if(i<0 || i>= this.Size)
+            if (i < 0 || i >= this.Size)
                 throw new IndexOutOfRangeException();
             this.elements[i] = value;
         }
@@ -64,7 +70,7 @@ public class Vector
 
         for (int i = 0; i < v.Size; i++)
         {
-            result += Math.Pow(v[i],2);
+            result += Math.Pow(v[i], 2);
         }
 
         return Math.Sqrt(result);
@@ -72,7 +78,7 @@ public class Vector
 
     static public double GetSimilarity(Vector v1, Vector v2)
     {
-        return Calc_ScalarProduct(v1,v2) / Calc_VectorsModule(v1)*Calc_VectorsModule(v2);
+        return Calc_ScalarProduct(v1, v2) / Calc_VectorsModule(v1) * Calc_VectorsModule(v2);
     }
 
     #endregion

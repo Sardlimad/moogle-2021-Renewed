@@ -10,21 +10,21 @@ public static class Moogle
     static Document[] docs = new Document[ReadFolder().Length];
     public static List<string> Words = new List<string>();
 
-    static List<int>[,] Positions = new List<int>[Words.Count,docs.Length];
+    static List<int>[,] Positions = new List<int>[Words.Count, docs.Length];
 
-    static Vector[] tfidf_matrix = new Vector[docs.Length + 1];
+    public static Vector[] tfidf_matrix = new Vector[docs.Length + 1];
 
-    public static Vector[] tfidf_matrix_aux = new Vector[docs.Length + 1]; //Matriz Auxiliar para modificar durante la búsqueda
+    public static Vector[] tfidf_matrix_aux = new Vector[docs.Length + 1];
 
 
     public static void Start() //Método para Leer documentos y hacer matriz de TF-IDF al inicio del programa.
     {
         docs = ReadFiles();
         Words = WordsCollection();
-        Positions = Words_Positions();
+        // Positions = Words_Positions();
         tfidf_matrix = Create_TermDocumentMatrix();
 
-        tfidf_matrix_aux = tfidf_matrix; //Igualamos la matrix auxiliar a la matriz de TF-IDF
+        tfidf_matrix_aux = CopyMatrix(); //Igualamos la matrix auxiliar a la matriz de TF-IDF
     }
 
     #endregion
@@ -62,17 +62,36 @@ public static class Moogle
         return docs;
     }
 
+    public static Vector[] CopyMatrix()
+    {
+        Console.WriteLine("Duplicando Matriz...");
+        Vector[] aux_matrix = new Vector[docs.Length + 1];
+
+        for (int i = 0; i < docs.Length; i++)
+        {
+            double[] new_elements = new double[Words.Count];
+            
+            for (int j = 0; j < Words.Count; j++)
+            {
+                new_elements[j] = tfidf_matrix[i].Elements[j];
+            }
+
+            aux_matrix[i] = new Vector(new_elements);
+
+        }
+        return aux_matrix;
+    }
     public static SearchResult Query(string query)
     {
         count_matches = 0; // Llevar a cero todas las coincidencias antes de empezar una nueva búsqueda
 
         Operators.Restart();
 
-        tfidf_matrix_aux = tfidf_matrix; //Reiniciar los valores de TF-IDF originales (sin aletración por operador *)
-
-        Operators.CheckPriority();
+        tfidf_matrix_aux = CopyMatrix(); //Reiniciar los valores de TF-IDF originales (sin aletración por operador *)
 
         Operators.RunOperators(query); //Detectar Operadores.
+
+        Operators.CheckPriority();
 
         query2 = Suggest(query).Trim();
 
@@ -111,7 +130,7 @@ public static class Moogle
                 {
                     scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i]);
 
-                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path), Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
+                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
 
                     temp_count--;
                 }
@@ -183,32 +202,32 @@ public static class Moogle
         return WordsCollection;
     }
 
-    static List<int>[,] Words_Positions()
-    {
-        Console.WriteLine("Creando Matriz de Posiciones...");
-        Document[] documents = docs;
-        List<int>[,] Positions = new List<int>[Words.Count,documents.Length]; //Crear una matriz de List<int> que contienen las posiciones de una palabra en un documento
+    // static List<int>[,] Words_Positions()
+    // {
+    //     Console.WriteLine("Creando Matriz de Posiciones...");
+    //     Document[] documents = docs;
+    //     List<int>[,] Positions = new List<int>[Words.Count,documents.Length]; //Crear una matriz de List<int> que contienen las posiciones de una palabra en un documento
 
-        for (int i = 0; i < documents.Length; i++)
-        {
-            for (int j = 0; j < Words.Count; j++)
-            {
-                Positions[i,j] = GetPositions(documents[i].Content,Words[j]);
-            }
-        }
-        return Positions;
-    }
+    //     for (int i = 0; i < documents.Length; i++)
+    //     {
+    //         for (int j = 0; j < Words.Count; j++)
+    //         {
+    //             Positions[i,j] = GetPositions(documents[i].Content,Words[j]);
+    //         }
+    //     }
+    //     return Positions;
+    // }
 
-    static List<int> GetPositions(string doc,string word)
+    static List<int> GetPositions(string doc, string word)
     {
         List<int> Pos = new List<int>();
         int inicial_pos = 0;
 
-        while(true)
+        while (true)
         {
-            int last_pos = doc.IndexOf(word,inicial_pos);
-            
-            if(last_pos == -1) break;
+            int last_pos = doc.IndexOf(word, inicial_pos);
+
+            if (last_pos == -1) break;
 
             Pos.Add(last_pos);
 

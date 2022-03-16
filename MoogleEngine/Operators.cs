@@ -151,8 +151,11 @@ public class Operators
 
             for (int i = 0; i < Moogle.tfidf_matrix_aux.Length-1; i++)
             {
-                Moogle.tfidf_matrix_aux[i][pos] *= Math.Pow(2,item.Value);
+                Console.WriteLine("Antes "+Moogle.tfidf_matrix_aux[i][pos]);
+                Moogle.tfidf_matrix_aux[i].Elements[pos] *= Math.Pow(3,item.Value);
+                Console.WriteLine("Después "+Moogle.tfidf_matrix_aux[i][pos]);
             }
+            //Moogle.tfidf_matrix_aux[Moogle.tfidf_matrix.Length+1][pos] *=  Math.Pow(2,item.Value);
         }
     }
 
