@@ -186,7 +186,7 @@ public class Operators
             {
                 for (int i = 0; i < Moogle.tfidf_matrix_aux.Length - 1; i++)
                 {
-                    Moogle.tfidf_matrix_aux[i].Elements[pos] *= Math.Pow(3, item.Value);
+                    Moogle.tfidf_matrix_aux[i].Elements[pos] *= Math.Pow(4, item.Value);
                 }
             }
         }
