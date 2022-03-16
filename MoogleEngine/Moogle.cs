@@ -7,7 +7,7 @@ public static class Moogle
     private static int count_matches = 0; //Contador de cantidad de coincidencias.
     private static string query2 = "";
 
-    static Document[] docs = new Document[ReadFolder().Length];
+    public static Document[] docs = new Document[ReadFolder().Length];
     public static List<string> Words = new List<string>();
 
     static List<int>[,] Positions = new List<int>[Words.Count, docs.Length];
@@ -16,12 +16,14 @@ public static class Moogle
 
     public static Vector[] tfidf_matrix_aux = new Vector[docs.Length + 1];
 
+    public static Dictionary<string, List<List<int>>> Words_Docs_Pos = new Dictionary<string, List<List<int>>>();
+
 
     public static void Start() //Método para Leer documentos y hacer matriz de TF-IDF al inicio del programa.
     {
         docs = ReadFiles();
         Words = WordsCollection();
-        // Positions = Words_Positions();
+        Words_Positions();
         tfidf_matrix = Create_TermDocumentMatrix();
 
         tfidf_matrix_aux = CopyMatrix(); //Igualamos la matrix auxiliar a la matriz de TF-IDF
@@ -64,13 +66,12 @@ public static class Moogle
 
     public static Vector[] CopyMatrix()
     {
-        Console.WriteLine("Duplicando Matriz...");
         Vector[] aux_matrix = new Vector[docs.Length + 1];
 
         for (int i = 0; i < docs.Length; i++)
         {
             double[] new_elements = new double[Words.Count];
-            
+
             for (int j = 0; j < Words.Count; j++)
             {
                 new_elements[j] = tfidf_matrix[i].Elements[j];
@@ -104,6 +105,8 @@ public static class Moogle
     {
         int[] words_positions = FindMatch(query2, docs);
 
+        float[] increases = Operators.CheckNearness();
+
         if (query2 == "")
         {
             SearchItem[] items = new SearchItem[1] { new SearchItem("Campo de Búsqueda Vacío", "😐", 0f) };
@@ -128,9 +131,9 @@ public static class Moogle
             {
                 if (words_positions[i] != -1)
                 {
-                    scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i]);
+                    scores[temp_count] = Calc_Score(tfidf_matrix_aux[docs.Length], tfidf_matrix_aux[i])+increases[i];
 
-                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
+                    temp_items[temp_count] = new SearchItem(Path.GetFileName(docs[i].Path) + scores[temp_count]+"/"+increases[i], Create_Snippet(words_positions[i], docs[i].Content), scores[temp_count]);
 
                     temp_count--;
                 }
@@ -195,28 +198,30 @@ public static class Moogle
 
             for (int j = 0; j < doc_words.Length; j++)
             {
-                if (!WordsCollection.Contains(doc_words[j]))
+                if (!WordsCollection.Contains(doc_words[j]) && doc_words[j]!="")
                     WordsCollection.Add(doc_words[j]);
             }
         }
         return WordsCollection;
     }
 
-    // static List<int>[,] Words_Positions()
-    // {
-    //     Console.WriteLine("Creando Matriz de Posiciones...");
-    //     Document[] documents = docs;
-    //     List<int>[,] Positions = new List<int>[Words.Count,documents.Length]; //Crear una matriz de List<int> que contienen las posiciones de una palabra en un documento
+    static void Words_Positions()
+    {
+        Console.WriteLine("Creando Matriz de Posiciones...");
+        Document[] documents = docs;
+        //List<int>[,] Positions = new List<int>[Words.Count,documents.Length]; //Crear una matriz de List<int> que contienen las posiciones de una palabra en un documento
 
-    //     for (int i = 0; i < documents.Length; i++)
-    //     {
-    //         for (int j = 0; j < Words.Count; j++)
-    //         {
-    //             Positions[i,j] = GetPositions(documents[i].Content,Words[j]);
-    //         }
-    //     }
-    //     return Positions;
-    // }
+        for (int i = 0; i < Words.Count; i++)
+        {
+            List<List<int>> Doc_List = new List<List<int>>();
+
+            for (int j = 0; j < documents.Length; j++)
+            {
+                Doc_List.Add(GetPositions(documents[j].Content,Words[i]));
+            }
+            Words_Docs_Pos.Add(Words[i], Doc_List);
+        }
+    }
 
     static List<int> GetPositions(string doc, string word)
     {
@@ -271,8 +276,8 @@ public static class Moogle
 
     static bool DoSuggestion(string inicial_w, string final_w) //Esto es una poda. Si la diferencia de la longitud de ambas cadenas en valor absoluto excede a 3 entonces se devuelve false y no se hará la sugerencia.
     {
-        if (Math.Abs(final_w.Length - inicial_w.Length) <= 3)
-            return true;
+        if (Math.Abs(final_w.Length - inicial_w.Length) <= 3 && inicial_w != "" && final_w != "") return true;
+        
         return false;
     }
     static string Suggest(string query)
@@ -332,10 +337,12 @@ public static class Moogle
 
             for (int j = 0; j < sub_query.Length; j++) //Iterando por cada palabra del query
             {
-
-                word_position[i] = docs[i].Content.IndexOf(sub_query[j], System.StringComparison.CurrentCultureIgnoreCase);
-
-                if (word_position[i] != -1) { count_matches++; break; }
+             if (sub_query[j] !="")
+             {
+                    word_position[i] = docs[i].Content.IndexOf(sub_query[j], System.StringComparison.CurrentCultureIgnoreCase);
+    
+                    if (word_position[i] != -1) { count_matches++; break; }
+             }
             }
         }
 

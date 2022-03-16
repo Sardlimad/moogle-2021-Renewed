@@ -10,6 +10,8 @@ public class Operators
     public static List<string> Words_Required = new List<string>();
 
     static Dictionary<string, int> Words_Priority = new Dictionary<string, int>();
+
+    static List<(string t1, string t2)> Words_Nearness = new List<(string, string)>();
     //Detectar Operadores
     public static void RunOperators(string query)
     {
@@ -65,8 +67,9 @@ public class Operators
             case '*':
                 Priority(query, position);
                 break;
-            //case '~': Nearness()
-            //break;
+            case '~':
+                Nearness(query, position);
+                break;
             default: break;
         }
     }
@@ -77,7 +80,7 @@ public class Operators
 
         for (int i = position + 1; i < query.Length; i++)
         {
-            if (query[i] == ' ') break;
+            if (!Char.IsLetterOrDigit(query[i])) break;
 
             word += query[i];
         }
@@ -91,7 +94,7 @@ public class Operators
 
         for (int i = position + 1; i < query.Length; i++)
         {
-            if (query[i] == ' ') break;
+            if (!Char.IsLetterOrDigit(query[i])) break;
 
             word += query[i];
         }
@@ -112,13 +115,45 @@ public class Operators
                 priority_level++;
                 continue;
             }
-            if (query[i] == ' ') break;
+            if (!Char.IsLetterOrDigit(query[i])) break;
 
             word += query[i];
         }
 
-        if(!Words_Priority.ContainsKey(word))
+        if (!Words_Priority.ContainsKey(word))
             Words_Priority.Add(word, priority_level);
+    }
+    static void Nearness(string query, int position) //Operador: ~
+    {
+        string word1 = "";
+
+        string word2 = "";
+
+        for (int i = position - 1; i >= 0; i--)
+        {
+            if (!Char.IsLetterOrDigit(query[i])) break;
+
+            word1 += query[i];
+        }
+
+        char[] new_word1 = word1.ToCharArray();
+        Array.Reverse(new_word1);
+
+        word1 = "";
+
+        for (int i = 0; i < new_word1.Length; i++)
+        {
+            word1 += new_word1[i];
+        }
+
+        for (int i = position + 1; i < query.Length; i++)
+        {
+            if (!Char.IsLetterOrDigit(query[i])) break;
+
+            word2 += query[i];
+        }
+
+        Words_Nearness.Add((word1, word2));
     }
 
     #region Métodos para que los operadores cumplan su función...
@@ -141,22 +176,57 @@ public class Operators
         return true;
     }
 
-     public static void CheckPriority()
+    public static void CheckPriority()
     {
         foreach (var item in Words_Priority)
         {
-            //if(!text.Contains(item.Key)) continue;
-
             int pos = Moogle.Words.IndexOf(item.Key); //Número de la Columna de la Matrix que representa los valores de TF-IDF de la palabra en cuestión
 
-            for (int i = 0; i < Moogle.tfidf_matrix_aux.Length-1; i++)
+            if (pos != -1)
             {
-                Console.WriteLine("Antes "+Moogle.tfidf_matrix_aux[i][pos]);
-                Moogle.tfidf_matrix_aux[i].Elements[pos] *= Math.Pow(3,item.Value);
-                Console.WriteLine("Después "+Moogle.tfidf_matrix_aux[i][pos]);
+                for (int i = 0; i < Moogle.tfidf_matrix_aux.Length - 1; i++)
+                {
+                    Moogle.tfidf_matrix_aux[i].Elements[pos] *= Math.Pow(3, item.Value);
+                }
             }
-            //Moogle.tfidf_matrix_aux[Moogle.tfidf_matrix.Length+1][pos] *=  Math.Pow(2,item.Value);
         }
+    }
+
+    public static float[] CheckNearness()
+    {
+        float[] increase = new float[Moogle.docs.Length];
+        for (int i = 0; i < Words_Nearness.Count; i++)
+        {
+            if (!Moogle.Words_Docs_Pos.ContainsKey(Words_Nearness[i].t1) || !Moogle.Words_Docs_Pos.ContainsKey(Words_Nearness[i].t2)) break;
+
+            for (int j = 0; j < Moogle.docs.Length; j++)
+            {
+                //if(!text.Contains(Words_Nearness[i].t1) || !text.Contains(Words_Nearness[i].t2)); continue;
+                if (Moogle.Words_Docs_Pos[Words_Nearness[i].t1][j] is null || Moogle.Words_Docs_Pos[Words_Nearness[i].t2][j] is null) continue;
+
+                int best_dist = BestDistance(Moogle.Words_Docs_Pos[Words_Nearness[i].t1][j], Moogle.Words_Docs_Pos[Words_Nearness[i].t2][j]);
+
+                if (best_dist != 0) increase[j] = (float)10 / (float)best_dist;
+
+            }
+        }
+        return increase;
+    }
+
+    static int BestDistance(List<int> word1, List<int> word2)
+    {
+        int best_dist = int.MaxValue;
+        int temp_dist = 0;
+        for (int i = 0; i < word1.Count; i++)
+        {
+            for (int j = 0; j < word2.Count; j++)
+            {
+                temp_dist = Math.Abs(word1[i] - word2[j]);
+                if (temp_dist < best_dist)
+                    best_dist = temp_dist;
+            }
+        }
+        return best_dist;
     }
 
     #endregion
@@ -166,5 +236,6 @@ public class Operators
         Words_Ignore.RemoveRange(0, Words_Ignore.Count);
         Words_Required.RemoveRange(0, Words_Required.Count);
         Words_Priority.Clear();
+        Words_Nearness.RemoveRange(0, Words_Nearness.Count);
     }
 }
